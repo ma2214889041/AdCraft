@@ -122,13 +122,24 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       initialize: () => {
-        onAuthStateChanged(auth, (firebaseUser) => {
-          if (firebaseUser) {
-            set({ user: mapFirebaseUser(firebaseUser), loading: false });
-          } else {
+        try {
+          if (!auth) {
+            console.warn('Firebase auth not initialized, skipping auth state listener');
             set({ user: null, loading: false });
+            return;
           }
-        });
+
+          onAuthStateChanged(auth, (firebaseUser) => {
+            if (firebaseUser) {
+              set({ user: mapFirebaseUser(firebaseUser), loading: false });
+            } else {
+              set({ user: null, loading: false });
+            }
+          });
+        } catch (error) {
+          console.error('Error initializing auth state listener:', error);
+          set({ user: null, loading: false });
+        }
       },
     }),
     {

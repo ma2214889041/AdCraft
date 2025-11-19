@@ -13,18 +13,35 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let app;
+let auth;
+let googleProvider;
+let githubProvider;
 
-// Initialize Firebase Authentication
-export const auth = getAuth(app);
+try {
+  console.log('Initializing Firebase...');
+  app = initializeApp(firebaseConfig);
 
-// Configure auth providers
-export const googleProvider = new GoogleAuthProvider();
-export const githubProvider = new GithubAuthProvider();
+  // Initialize Firebase Authentication
+  auth = getAuth(app);
 
-// Configure settings
-googleProvider.setCustomParameters({
-  prompt: 'select_account'
-});
+  // Configure auth providers
+  googleProvider = new GoogleAuthProvider();
+  githubProvider = new GithubAuthProvider();
 
+  // Configure settings
+  googleProvider.setCustomParameters({
+    prompt: 'select_account'
+  });
+
+  console.log('Firebase initialized successfully');
+} catch (error) {
+  console.error('Firebase initialization error:', error);
+  // Create dummy exports to prevent module loading errors
+  auth = null as any;
+  googleProvider = null as any;
+  githubProvider = null as any;
+}
+
+export { auth, googleProvider, githubProvider };
 export default app;
