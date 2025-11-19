@@ -5,6 +5,7 @@ import { Home } from './pages/Home';
 import { Dashboard } from './pages/Dashboard';
 import { Create } from './pages/Create';
 import { ImageAds } from './pages/ImageAds';
+import { FirebaseTest } from './pages/FirebaseTest';
 import { onAuthChange } from './services/authService';
 import type { User } from 'firebase/auth';
 
@@ -50,6 +51,8 @@ const App: React.FC = () => {
         return <Create initialInput={initialInput} />;
       case 'image-ads':
         return <ImageAds />;
+      case 'firebase-test':
+        return <FirebaseTest />;
       case 'landing':
       default:
         return <Home onStartCreate={handleStartCreate} />;
