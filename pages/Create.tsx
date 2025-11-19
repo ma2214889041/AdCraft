@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '../components/Button';
-import { generateScript, generateVeoVideo, checkApiKey, promptApiKey } from '../services/geminiService';
+import { generateScript, generateVeoVideo, checkApiKey } from '../services/geminiService';
 import { VideoScript, GenerationStatus } from '../types';
 import { RefreshCw, Film, CheckCircle, AlertCircle, Wand2, ArrowLeft } from 'lucide-react';
 
@@ -42,9 +42,8 @@ export const Create: React.FC<CreateProps> = ({ initialInput = '' }) => {
     if (!script) return;
 
     try {
-        const hasKey = await checkApiKey();
-        if (!hasKey) {
-            await promptApiKey();
+        if (!checkApiKey()) {
+            throw new Error('API key not configured. Please check your .env file.');
         }
 
         setStatus(GenerationStatus.GENERATING_VIDEO);

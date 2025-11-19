@@ -1,12 +1,30 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../components/Button';
-import { Sparkles, Video, Image as ImageIcon, User, Film, Layers, Scissors, Plus, Folder, TrendingUp, Split } from 'lucide-react';
+import { Sparkles, Video, Image as ImageIcon, User, Film, Layers, Scissors, Plus, Folder, TrendingUp, Split, Activity, Zap, DollarSign, CheckCircle } from 'lucide-react';
+import { getPerformanceStats, type PerformanceStats } from '../services/performanceMonitor';
 
 interface DashboardProps {
   onNavigate: (view: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
+  const [stats, setStats] = useState<PerformanceStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const data = await getPerformanceStats(24); // Last 24 hours
+        setStats(data);
+      } catch (error) {
+        console.error('Failed to load performance stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadStats();
+  }, []);
 
   const tools = [
     {
@@ -97,6 +115,87 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
         </div>
       </div>
+
+      {/* Performance Metrics */}
+      {!loading && stats && stats.totalMetrics > 0 && (
+        <div>
+          <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+            <Activity className="w-5 h-5" />
+            性能统计 (过去24小时)
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Image Optimizations */}
+            <div className="bg-[#1a1f2e] border border-white/5 rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <ImageIcon className="w-5 h-5 text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400">图片优化</p>
+                  <p className="text-2xl font-bold text-white">{stats.imageOptimizations.count}</p>
+                </div>
+              </div>
+              {stats.imageOptimizations.count > 0 && (
+                <div className="space-y-1 text-xs text-slate-400">
+                  <p>压缩率: {(stats.imageOptimizations.averageCompressionRatio * 100).toFixed(1)}%</p>
+                  <p>节省: {(stats.imageOptimizations.totalSavings / 1024 / 1024).toFixed(2)} MB</p>
+                </div>
+              )}
+            </div>
+
+            {/* Cache Efficiency */}
+            <div className="bg-[#1a1f2e] border border-white/5 rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-green-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400">缓存命中率</p>
+                  <p className="text-2xl font-bold text-white">{stats.cache.hitRate.toFixed(1)}%</p>
+                </div>
+              </div>
+              <div className="space-y-1 text-xs text-slate-400">
+                <p>命中: {stats.cache.hits} | 未命中: {stats.cache.misses}</p>
+              </div>
+            </div>
+
+            {/* Cost Savings */}
+            <div className="bg-[#1a1f2e] border border-white/5 rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <DollarSign className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400">成本节省</p>
+                  <p className="text-2xl font-bold text-white">${stats.cache.costSaved.toFixed(3)}</p>
+                </div>
+              </div>
+              <div className="space-y-1 text-xs text-slate-400">
+                <p>总消耗: ${stats.apiCalls.totalCost.toFixed(3)}</p>
+              </div>
+            </div>
+
+            {/* Video Generation */}
+            <div className="bg-[#1a1f2e] border border-white/5 rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                  <Video className="w-5 h-5 text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400">视频生成</p>
+                  <p className="text-2xl font-bold text-white">{stats.videoGeneration.count}</p>
+                </div>
+              </div>
+              {stats.videoGeneration.count > 0 && (
+                <div className="space-y-1 text-xs text-slate-400">
+                  <p>成功率: {stats.videoGeneration.successRate.toFixed(1)}%</p>
+                  <p>平均时长: {stats.videoGeneration.averageDuration.toFixed(1)}s</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Popular Tools */}
       <div>

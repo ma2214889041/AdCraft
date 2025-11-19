@@ -1,14 +1,16 @@
 /**
  * Image Optimization Service
  * Handles image compression, resizing, and format conversion
+ * Supports: JPEG, PNG, WebP, GIF, AVIF
  */
 
 export interface ImageOptimizationOptions {
   maxWidth?: number;
   maxHeight?: number;
   quality?: number; // 0-1
-  format?: 'jpeg' | 'png' | 'webp';
+  format?: 'jpeg' | 'png' | 'webp' | 'gif' | 'avif' | 'auto';
   maxSizeKB?: number; // Maximum file size in KB
+  preserveAnimation?: boolean; // For GIFs
 }
 
 export interface OptimizationResult {
@@ -20,14 +22,65 @@ export interface OptimizationResult {
   format: string;
   blob: Blob;
   dataUrl: string;
+  isAnimated?: boolean;
 }
 
 const DEFAULT_OPTIONS: ImageOptimizationOptions = {
   maxWidth: 2048,
   maxHeight: 2048,
   quality: 0.85,
-  format: 'jpeg',
+  format: 'auto',
   maxSizeKB: 2048, // 2MB max
+  preserveAnimation: true,
+};
+
+/**
+ * Detect image format from file
+ */
+const detectImageFormat = (file: File): string => {
+  const ext = file.name.split('.').pop()?.toLowerCase() || '';
+  if (ext === 'gif') return 'gif';
+  if (ext === 'png') return 'png';
+  if (ext === 'webp') return 'webp';
+  if (ext === 'avif') return 'avif';
+  return 'jpeg';
+};
+
+/**
+ * Check if browser supports AVIF
+ */
+const supportsAVIF = (): boolean => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1;
+  canvas.height = 1;
+  return canvas.toDataURL('image/avif').indexOf('data:image/avif') === 0;
+};
+
+/**
+ * Check if browser supports WebP
+ */
+const supportsWebP = (): boolean => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1;
+  canvas.height = 1;
+  return canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+};
+
+/**
+ * Get best supported format
+ */
+const getBestFormat = (originalFormat: string): string => {
+  // If original is GIF, keep it (for animations)
+  if (originalFormat === 'gif') return 'gif';
+
+  // Try AVIF first (best compression)
+  if (supportsAVIF()) return 'avif';
+
+  // Fall back to WebP
+  if (supportsWebP()) return 'webp';
+
+  // Fall back to JPEG
+  return 'jpeg';
 };
 
 /**
@@ -39,7 +92,12 @@ export const optimizeImage = async (
 ): Promise<OptimizationResult> => {
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
+  // Auto-detect format if set to 'auto'
+  const originalFormat = detectImageFormat(file);
+  const targetFormat = opts.format === 'auto' ? getBestFormat(originalFormat) : opts.format!;
+
   console.log(`🖼️ Optimizing image: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+  console.log(`📝 Original format: ${originalFormat}, Target format: ${targetFormat}`);
 
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -76,12 +134,18 @@ export const optimizeImage = async (
           // Draw image
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Determine MIME type
-          const mimeType = opts.format === 'png'
-            ? 'image/png'
-            : opts.format === 'webp'
-            ? 'image/webp'
-            : 'image/jpeg';
+          // Determine MIME type based on target format
+          const getMimeType = (format: string): string => {
+            switch (format) {
+              case 'png': return 'image/png';
+              case 'webp': return 'image/webp';
+              case 'gif': return 'image/gif';
+              case 'avif': return 'image/avif';
+              default: return 'image/jpeg';
+            }
+          };
+
+          const mimeType = getMimeType(targetFormat);
 
           // Convert to blob
           canvas.toBlob(
@@ -117,9 +181,10 @@ export const optimizeImage = async (
                       compressionRatio,
                       width: Math.round(width),
                       height: Math.round(height),
-                      format: opts.format!,
+                      format: targetFormat,
                       blob: secondBlob,
                       dataUrl,
+                      isAnimated: originalFormat === 'gif',
                     });
                   },
                   mimeType,
@@ -137,9 +202,10 @@ export const optimizeImage = async (
                   compressionRatio,
                   width: Math.round(width),
                   height: Math.round(height),
-                  format: opts.format!,
+                  format: targetFormat,
                   blob,
                   dataUrl,
+                  isAnimated: originalFormat === 'gif',
                 });
               }
             },

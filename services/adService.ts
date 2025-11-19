@@ -11,6 +11,11 @@ import {
   getCachedGenerationResult,
   cacheGenerationResult,
 } from "./cacheService";
+import {
+  trackImageOptimization,
+  trackAPICall,
+  trackVideoGeneration,
+} from "./performanceMonitor";
 
 // Get API key from environment variables
 const getApiKey = (): string => {
@@ -60,6 +65,8 @@ export const analyzeProductImage = async (
 
   console.log("📸 Analyzing product image...");
 
+  const startTime = Date.now();
+
   // Generate hash for caching (only for File objects)
   let imageHash: string | null = null;
   if (imageFile instanceof File) {
@@ -70,6 +77,14 @@ export const analyzeProductImage = async (
       const cached = await getCachedImageAnalysis(imageHash);
       if (cached) {
         console.log("✅ Using cached analysis result");
+        // Track cache hit
+        await trackAPICall({
+          endpoint: 'analyzeProductImage',
+          duration: Date.now() - startTime,
+          status: 'success',
+          cacheHit: true,
+          cost: 0,
+        });
         return cached;
       }
     }
@@ -79,12 +94,31 @@ export const analyzeProductImage = async (
   let base64Image: string;
   if (imageFile instanceof File) {
     console.log("🔧 Optimizing image...");
+    const optimizationStart = Date.now();
+    const originalSize = imageFile.size;
+
     base64Image = await fileToBase64Optimized(imageFile, {
       maxWidth: 2048,
       maxHeight: 2048,
       quality: 0.85,
       maxSizeKB: 1024, // 1MB max for API
     });
+
+    // Estimate optimized size from base64 (rough estimate)
+    const optimizedSize = Math.round((base64Image.length * 3) / 4);
+    const processingTime = Date.now() - optimizationStart;
+
+    // Track optimization
+    await trackImageOptimization({
+      originalSize,
+      optimizedSize,
+      compressionRatio: originalSize > 0 ? optimizedSize / originalSize : 1,
+      width: 2048,
+      height: 2048,
+      format: 'jpeg',
+      processingTime,
+    });
+
     console.log("✅ Image optimized");
   } else {
     base64Image = await toBase64(imageFile);
@@ -179,10 +213,30 @@ export const analyzeProductImage = async (
       await cacheImageAnalysis(imageHash, result);
     }
 
+    // Track API call (cache miss)
+    await trackAPICall({
+      endpoint: 'analyzeProductImage',
+      duration: Date.now() - startTime,
+      status: 'success',
+      cacheHit: false,
+      cost: 0.003, // Estimated cost per API call
+    });
+
     return result;
 
   } catch (error) {
     console.error("❌ Image analysis error:", error);
+
+    // Track failed API call
+    await trackAPICall({
+      endpoint: 'analyzeProductImage',
+      duration: Date.now() - startTime,
+      status: 'error',
+      cacheHit: false,
+      cost: 0,
+      errorMessage: error instanceof Error ? error.message : 'Unknown error',
+    });
+
     throw new Error("Failed to analyze product image. Please try again.");
   }
 };
@@ -307,6 +361,7 @@ export const generateVideoAd = async (
 ): Promise<string> => {
   const ai = getClient();
   const apiKey = getApiKey();
+  const startTime = Date.now();
 
   // Create cache key from inputs
   const cacheKey = `${imageUrl}_${productDescription}`;
@@ -316,6 +371,14 @@ export const generateVideoAd = async (
     const cached = await getCachedVideo(cacheKey);
     if (cached) {
       console.log("✅ Using cached video");
+      // Track cache hit
+      await trackAPICall({
+        endpoint: 'generateVideoAd',
+        duration: Date.now() - startTime,
+        status: 'success',
+        cacheHit: true,
+        cost: 0,
+      });
       return cached;
     }
   }
@@ -377,11 +440,36 @@ export const generateVideoAd = async (
     tracker?.complete();
     console.log("✅ Video generated successfully!");
 
+    // Track successful video generation
+    const duration = Date.now() - startTime;
+    await trackVideoGeneration(duration, true);
+    await trackAPICall({
+      endpoint: 'generateVideoAd',
+      duration,
+      status: 'success',
+      cacheHit: false,
+      cost: 0.05, // Estimated cost for video generation
+    });
+
     return videoUrl;
 
   } catch (error) {
     tracker?.fail();
     console.error("❌ Video generation error:", error);
+
+    // Track failed video generation
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    await trackVideoGeneration(duration, false, errorMessage);
+    await trackAPICall({
+      endpoint: 'generateVideoAd',
+      duration,
+      status: 'error',
+      cacheHit: false,
+      cost: 0,
+      errorMessage,
+    });
+
     throw error;
   } finally {
     tracker?.destroy();
@@ -397,6 +485,7 @@ export const generateAIProductScene = async (
   options: { forceRefresh?: boolean } = {}
 ): Promise<string> => {
   const ai = getClient();
+  const startTime = Date.now();
 
   // Create cache key
   const cacheKey = `scene_${imageUrl}_${sceneDescription}`;
@@ -406,6 +495,14 @@ export const generateAIProductScene = async (
     const cached = await getCachedGenerationResult<string>(cacheKey);
     if (cached) {
       console.log("✅ Using cached AI scene");
+      // Track cache hit
+      await trackAPICall({
+        endpoint: 'generateAIProductScene',
+        duration: Date.now() - startTime,
+        status: 'success',
+        cacheHit: true,
+        cost: 0,
+      });
       return cached;
     }
   }
@@ -443,6 +540,16 @@ export const generateAIProductScene = async (
       await cacheGenerationResult(cacheKey, result);
 
       console.log("✅ AI scene generated!");
+
+      // Track successful AI scene generation
+      await trackAPICall({
+        endpoint: 'generateAIProductScene',
+        duration: Date.now() - startTime,
+        status: 'success',
+        cacheHit: false,
+        cost: 0.01, // Estimated cost for image generation
+      });
+
       return result;
     }
 
@@ -450,6 +557,17 @@ export const generateAIProductScene = async (
 
   } catch (error) {
     console.error("❌ AI scene generation error:", error);
+
+    // Track failed AI scene generation
+    await trackAPICall({
+      endpoint: 'generateAIProductScene',
+      duration: Date.now() - startTime,
+      status: 'error',
+      cacheHit: false,
+      cost: 0,
+      errorMessage: error instanceof Error ? error.message : 'Unknown error',
+    });
+
     throw error;
   }
 };
