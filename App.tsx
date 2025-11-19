@@ -2,34 +2,42 @@ import React, { useState } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { Home } from './pages/Home';
+import { Dashboard } from './pages/Dashboard';
 import { Create } from './pages/Create';
 import { ImageAds } from './pages/ImageAds';
 
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' is the Landing Page
+  const [currentView, setCurrentView] = useState('landing'); // Default to Landing Page
   const [initialInput, setInitialInput] = useState('');
 
+  // When starting from the landing page, go to Dashboard (simulating login) 
+  // or directly to create if an input was provided
   const handleStartCreate = (input: string = '') => {
     setInitialInput(input);
-    setCurrentView('create');
+    if (input) {
+        setCurrentView('create');
+    } else {
+        setCurrentView('dashboard');
+    }
   };
 
   const renderContent = () => {
     switch (currentView) {
+      case 'dashboard':
+        return <Dashboard onNavigate={setCurrentView} />;
       case 'create':
         return <Create initialInput={initialInput} />;
       case 'image-ads':
         return <ImageAds />;
-      case 'dashboard':
+      case 'landing':
       default:
         return <Home onStartCreate={handleStartCreate} />;
     }
   };
 
-  // Only show sidebar layout when in "App" mode (Create, Projects, etc)
-  // Dashboard (Home) gets full width layout
-  const isAppMode = currentView !== 'dashboard';
+  // "App Mode" (Sidebar + Logged In Header) applies to everything except the Landing Page
+  const isAppMode = currentView !== 'landing';
 
   return (
     <div className="min-h-screen font-sans selection:bg-brand-purple/30 bg-brand-dark text-slate-200">
@@ -39,7 +47,8 @@ const App: React.FC = () => {
         <Header 
             onMenuClick={() => setIsSidebarOpen(true)} 
             isAppMode={isAppMode}
-            onLogoClick={() => setCurrentView('dashboard')}
+            // If in app mode, clicking logo goes to dashboard. If in landing, it refreshes landing.
+            onLogoClick={() => setCurrentView(isAppMode ? 'dashboard' : 'landing')}
         />
       </div>
       
