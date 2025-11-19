@@ -1,13 +1,29 @@
-import React from 'react';
-import { Menu, Sparkles, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Menu, Sparkles, ArrowRight, LogOut, User as UserIcon } from 'lucide-react';
+import type { User } from 'firebase/auth';
 
 interface HeaderProps {
   onMenuClick: () => void;
   isAppMode?: boolean;
   onLogoClick?: () => void;
+  user?: User | null;
+  onLogout?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onMenuClick, isAppMode = false, onLogoClick }) => {
+export const Header: React.FC<HeaderProps> = ({ onMenuClick, isAppMode = false, onLogoClick, user, onLogout }) => {
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  const getUserDisplayName = () => {
+    if (user?.displayName) return user.displayName;
+    if (user?.email) return user.email.split('@')[0];
+    return 'User';
+  };
+
+  const getUserInitials = () => {
+    const name = getUserDisplayName();
+    return name.substring(0, 2).toUpperCase();
+  };
+
   return (
     <header className={`
       h-24 flex items-center px-4 lg:px-8 w-full
@@ -67,7 +83,68 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick, isAppMode = false, 
                 </div>
              </>
          ) : (
-             <div className="w-8 h-8 rounded-full bg-slate-700 border border-slate-600"></div>
+             <div className="relative">
+               {user ? (
+                 <>
+                   <button
+                     onClick={() => setShowUserMenu(!showUserMenu)}
+                     className="flex items-center gap-3 hover:bg-slate-800/50 rounded-lg p-2 transition-colors"
+                   >
+                     {user.photoURL ? (
+                       <img
+                         src={user.photoURL}
+                         alt={getUserDisplayName()}
+                         className="w-8 h-8 rounded-full border border-slate-600"
+                       />
+                     ) : (
+                       <div className="w-8 h-8 rounded-full bg-brand-purple flex items-center justify-center text-white text-sm font-semibold border border-purple-500">
+                         {getUserInitials()}
+                       </div>
+                     )}
+                     <span className="text-sm font-medium text-white hidden md:block">
+                       {getUserDisplayName()}
+                     </span>
+                   </button>
+
+                   {/* User Menu Dropdown */}
+                   {showUserMenu && (
+                     <>
+                       {/* Backdrop to close menu */}
+                       <div
+                         className="fixed inset-0 z-10"
+                         onClick={() => setShowUserMenu(false)}
+                       />
+
+                       <div className="absolute right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl z-20 overflow-hidden">
+                         {/* User Info */}
+                         <div className="p-4 border-b border-slate-700">
+                           <p className="text-sm font-medium text-white">{getUserDisplayName()}</p>
+                           <p className="text-xs text-slate-400 mt-1">{user.email}</p>
+                         </div>
+
+                         {/* Menu Items */}
+                         <div className="py-2">
+                           <button
+                             onClick={() => {
+                               setShowUserMenu(false);
+                               onLogout?.();
+                             }}
+                             className="w-full px-4 py-2 text-sm text-left text-red-400 hover:bg-slate-700/50 transition-colors flex items-center gap-2"
+                           >
+                             <LogOut className="w-4 h-4" />
+                             Sign Out
+                           </button>
+                         </div>
+                       </div>
+                     </>
+                   )}
+                 </>
+               ) : (
+                 <div className="w-8 h-8 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center">
+                   <UserIcon className="w-4 h-4 text-slate-400" />
+                 </div>
+               )}
+             </div>
          )}
       </div>
     </header>
