@@ -1,17 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { Home } from './pages/Home';
 import { Dashboard } from './pages/Dashboard';
 import { Create } from './pages/Create';
 import { ImageAds } from './pages/ImageAds';
+import { onAuthChange } from './services/authService';
+import type { User } from 'firebase/auth';
 
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentView, setCurrentView] = useState('landing'); // Default to Landing Page
   const [initialInput, setInitialInput] = useState('');
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
-  // When starting from the landing page, go to Dashboard (simulating login) 
+  // Listen to authentication state changes
+  useEffect(() => {
+    const unsubscribe = onAuthChange((currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+
+      // If user logs out, redirect to landing
+      if (!currentUser && currentView !== 'landing') {
+        setCurrentView('landing');
+      }
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [currentView]);
+
+  // When starting from the landing page, go to Dashboard (simulating login)
   // or directly to create if an input was provided
   const handleStartCreate = (input: string = '') => {
     setInitialInput(input);
