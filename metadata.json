@@ -1,0 +1,5 @@
+{
+  "name": "AdCraft",
+  "description": "A personal AI video creation platform. Generate viral marketing scripts and videos from product descriptions using Gemini and Veo models.",
+  "requestFramePermissions": []
+}
