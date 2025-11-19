@@ -1,18 +1,28 @@
-import React from 'react';
-import { Menu, Sparkles, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Menu, Sparkles, ArrowRight, User, LogOut, Settings } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
 
 interface HeaderProps {
   onMenuClick: () => void;
   isAppMode?: boolean;
   onLogoClick?: () => void;
+  onLoginClick?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onMenuClick, isAppMode = false, onLogoClick }) => {
+export const Header: React.FC<HeaderProps> = ({ onMenuClick, isAppMode = false, onLogoClick, onLoginClick }) => {
+  const { user, signOut } = useAuthStore();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  const handleSignOut = async () => {
+    await signOut();
+    setShowUserMenu(false);
+  };
+
   return (
     <header className={`
       h-24 flex items-center px-4 lg:px-8 w-full
-      ${isAppMode 
-        ? 'sticky top-0 z-50 bg-brand-dark border-b border-white/10' 
+      ${isAppMode
+        ? 'sticky top-0 z-50 bg-brand-dark border-b border-white/10'
         : 'bg-transparent'}
     `}>
       {/* Left: Logo */}
@@ -58,7 +68,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick, isAppMode = false, 
                 <a href="#" className="text-sm font-bold text-white tracking-wide hover:text-white/80 hidden xl:block">BOOK A DEMO</a>
                 <div className="flex items-center overflow-hidden rounded-lg border border-white/20 shadow-lg group cursor-pointer">
                     <button className="bg-brand-purple hover:bg-indigo-500 w-12 h-12 flex items-center justify-center transition-colors">
-                         <img src="https://cdn-icons-png.flaticon.com/512/271/271228.png" className="w-5 h-5 brightness-0 invert rotate-180" alt="arrow" style={{ filter: 'invert(1)' }} /> {/* Placeholder for the specific arrow icon */}
                          <ArrowRight className="w-5 h-5 text-white" />
                     </button>
                     <div className="bg-black px-6 h-12 flex items-center">
@@ -67,7 +76,62 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick, isAppMode = false, 
                 </div>
              </>
          ) : (
-             <div className="w-8 h-8 rounded-full bg-slate-700 border border-slate-600"></div>
+             <div className="relative">
+               {user ? (
+                 <>
+                   <button
+                     onClick={() => setShowUserMenu(!showUserMenu)}
+                     className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors"
+                   >
+                     {user.photoURL ? (
+                       <img
+                         src={user.photoURL}
+                         alt={user.displayName || 'User'}
+                         className="w-8 h-8 rounded-full border border-slate-600"
+                       />
+                     ) : (
+                       <div className="w-8 h-8 rounded-full bg-brand-purple flex items-center justify-center text-white font-bold text-sm">
+                         {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                       </div>
+                     )}
+                     <span className="hidden md:block text-white text-sm font-medium max-w-[120px] truncate">
+                       {user.displayName || user.email}
+                     </span>
+                   </button>
+
+                   {/* User dropdown menu */}
+                   {showUserMenu && (
+                     <>
+                       <div
+                         className="fixed inset-0 z-40"
+                         onClick={() => setShowUserMenu(false)}
+                       />
+                       <div className="absolute right-0 mt-2 w-56 bg-surface border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden">
+                         <div className="p-4 border-b border-white/10">
+                           <p className="text-white font-medium truncate">{user.displayName || '用户'}</p>
+                           <p className="text-slate-400 text-sm truncate">{user.email}</p>
+                         </div>
+                         <button
+                           onClick={handleSignOut}
+                           className="w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+                         >
+                           <LogOut className="w-4 h-4" />
+                           <span className="text-sm">退出登录</span>
+                         </button>
+                       </div>
+                     </>
+                   )}
+                 </>
+               ) : (
+                 <button
+                   onClick={onLoginClick}
+                   className="flex items-center gap-2 px-4 py-2 bg-brand-purple hover:bg-indigo-500 text-white rounded-lg transition-colors font-medium text-sm"
+                 >
+                   <User className="w-4 h-4" />
+                   <span>登录</span>
+                 </button>
+               )}
+             </div>
          )}
       </div>
     </header>

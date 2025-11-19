@@ -14,14 +14,18 @@ import { Editor } from './pages/Editor';
 import { AdminLogin } from './admin/AdminLogin';
 import { AdminLayout } from './admin/AdminLayout';
 import { useAdminStore } from './store/adminStore';
+import { useAuthStore } from './store/authStore';
+import { AuthModal } from './components/AuthModal';
 
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentView, setCurrentView] = useState('landing');
   const [initialInput, setInitialInput] = useState('');
   const [isAdminMode, setIsAdminMode] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const { isAuthenticated } = useAdminStore();
+  const { isAuthenticated: isAdminAuthenticated } = useAdminStore();
+  const { user: currentUser, loading: authLoading } = useAuthStore();
 
   // Check if URL contains /admin
   useEffect(() => {
@@ -85,7 +89,7 @@ const App: React.FC = () => {
 
   // Admin Mode Rendering
   if (isAdminMode) {
-    if (!isAuthenticated) {
+    if (!isAdminAuthenticated) {
       return <AdminLogin onLoginSuccess={handleAdminLoginSuccess} />;
     }
     return <AdminLayout />;
@@ -94,8 +98,29 @@ const App: React.FC = () => {
   // Regular User Mode
   const isAppMode = currentView !== 'landing' && currentView !== 'editor';
 
+  // Check if user needs to authenticate for app features
+  const requiresAuth = isAppMode && !currentUser && !authLoading;
+
+  // Auto-open auth modal when accessing app features without login
+  useEffect(() => {
+    if (requiresAuth) {
+      setShowAuthModal(true);
+    }
+  }, [requiresAuth]);
+
   return (
     <div className="min-h-screen font-sans selection:bg-brand-purple/30 bg-brand-dark text-slate-200">
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => {
+          setShowAuthModal(false);
+          // If user closes modal without login, go back to landing
+          if (!currentUser) {
+            setCurrentView('landing');
+          }
+        }}
+      />
 
       {/* Header Positioning Logic */}
       {currentView !== 'editor' && (
@@ -104,6 +129,7 @@ const App: React.FC = () => {
               onMenuClick={() => setIsSidebarOpen(true)}
               isAppMode={isAppMode}
               onLogoClick={() => setCurrentView(isAppMode ? 'dashboard' : 'landing')}
+              onLoginClick={() => setShowAuthModal(true)}
           />
         </div>
       )}
