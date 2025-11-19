@@ -1,40 +1,35 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { VideoScript } from "../types";
 
-// Use a local interface and casting to avoid global namespace conflicts with window.aistudio
-interface AIStudioClient {
-  hasSelectedApiKey: () => Promise<boolean>;
-  openSelectKey: () => Promise<void>;
-}
-
-const getAIStudio = (): AIStudioClient | undefined => {
-  return (window as any).aistudio;
-}
+// Get API key from environment variables
+const getApiKey = (): string => {
+  const apiKey = import.meta.env.VITE_API_KEY;
+  if (!apiKey) {
+    console.error("❌ API Key not found! Please add VITE_API_KEY to your .env file");
+    throw new Error("API Key is required. Please configure VITE_API_KEY in .env");
+  }
+  return apiKey;
+};
 
 const getClient = () => {
-  // Always create a new client to pick up the latest key if it changed via window.aistudio
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    console.warn("API Key not found in process.env.API_KEY");
-  }
-  return new GoogleGenAI({ apiKey: apiKey });
+  return new GoogleGenAI({ apiKey: getApiKey() });
 };
 
 export const generateScript = async (productDescription: string): Promise<VideoScript> => {
   const ai = getClient();
-  
+
   const prompt = `
-    You are a professional marketing video scriptwriter. 
+    You are a professional marketing video scriptwriter.
     Create a viral, high-converting short video script (approx 30-60 seconds) for the following product.
-    
+
     Product Description: "${productDescription}"
-    
+
     Return the response in JSON format adhering to the schema.
     Focus on a hook, benefits, social proof, and a call to action.
   `;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.0-flash-exp',
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -68,61 +63,53 @@ export const generateScript = async (productDescription: string): Promise<VideoS
   return JSON.parse(text) as VideoScript;
 };
 
-export const generateVeoVideo = async (prompt: string): Promise<string | null> => {
-  // Ensure user has selected a key before calling Veo
-  const aiStudio = getAIStudio();
-  if (aiStudio && aiStudio.hasSelectedApiKey) {
-      const hasKey = await aiStudio.hasSelectedApiKey();
-      if (!hasKey) {
-          await aiStudio.openSelectKey();
-          // Double check after dialog close attempt (though race conditions exist, we assume user complied)
-      }
-  }
-
+export const generateVeoVideo = async (prompt: string): Promise<string> => {
   const ai = getClient();
+  const apiKey = getApiKey();
 
   try {
+    console.log("🎬 Starting Veo video generation...");
+
     let operation = await ai.models.generateVideos({
-      model: 'veo-3.1-fast-generate-preview',
-      prompt: prompt, 
+      model: import.meta.env.VITE_VEO_MODEL || 'veo-3.1-fast-generate-preview',
+      prompt: prompt,
       config: {
         numberOfVideos: 1,
-        resolution: '720p', 
-        aspectRatio: '16:9' 
+        resolution: '720p',
+        aspectRatio: '16:9'
       }
     });
+
+    console.log("⏳ Video generation in progress...");
 
     while (!operation.done) {
       await new Promise(resolve => setTimeout(resolve, 5000)); // Poll every 5 seconds
       operation = await ai.operations.getVideosOperation({operation: operation});
+      console.log("🔄 Checking status...");
     }
 
     const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
-    
+
     if (!videoUri) {
       throw new Error("Video generation failed to return a URI.");
     }
 
+    console.log("✅ Video generated successfully!");
+
     // Veo URIs require the API key appended to fetch/display
-    return `${videoUri}&key=${process.env.API_KEY}`;
+    return `${videoUri}&key=${apiKey}`;
 
   } catch (error) {
-    console.error("Veo Generation Error:", error);
+    console.error("❌ Veo Generation Error:", error);
     throw error;
   }
 };
 
-export const checkApiKey = async (): Promise<boolean> => {
-    const aiStudio = getAIStudio();
-    if (aiStudio) {
-        return await aiStudio.hasSelectedApiKey();
-    }
-    return !!process.env.API_KEY;
-}
-
-export const promptApiKey = async (): Promise<void> => {
-    const aiStudio = getAIStudio();
-    if (aiStudio) {
-        await aiStudio.openSelectKey();
-    }
-}
+export const checkApiKey = (): boolean => {
+  try {
+    getApiKey();
+    return true;
+  } catch {
+    return false;
+  }
+};

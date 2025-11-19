@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '../components/Button';
-import { analyzeProductUrl, generateSellingPoints, generateVideoAd, generateAIProductScene } from '../services/adService';
+import { analyzeProductImage, analyzeProductUrl, generateSellingPoints, generateVideoAd, generateAIProductScene } from '../services/adService';
 import { ScrapedProduct, ProductAsset, AdConfig, GenerationStatus } from '../types';
-import { Search, Globe, ArrowRight, ArrowLeft, CheckCircle2, Plus, Image as ImageIcon, Wand2, Sparkles, LayoutTemplate, Download, Video, Play, Loader2, Star } from 'lucide-react';
+import { Search, Globe, ArrowRight, ArrowLeft, CheckCircle2, Plus, Image as ImageIcon, Wand2, Sparkles, LayoutTemplate, Download, Video, Play, Loader2, Star, Upload } from 'lucide-react';
 
 export const ImageAds: React.FC = () => {
-  const [step, setStep] = useState<number>(0); // 0: URL, 1: Config
+  const [step, setStep] = useState<number>(0); // 0: Input (URL or File), 1: Config
   const [urlInput, setUrlInput] = useState('');
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [inputMode, setInputMode] = useState<'url' | 'file'>('file'); // Default to file upload
   const [status, setStatus] = useState<GenerationStatus>(GenerationStatus.IDLE);
   const [scrapedData, setScrapedData] = useState<ScrapedProduct | null>(null);
   const [isRegeneratingPoints, setIsRegeneratingPoints] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // AI Scene Generation State
   const [showSceneGenerator, setShowSceneGenerator] = useState(false);
@@ -39,18 +42,39 @@ export const ImageAds: React.FC = () => {
 
   const [assets, setAssets] = useState<ProductAsset[]>([]);
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      setUploadedFile(file);
+      setInputMode('file');
+    }
+  };
+
   const handleAnalyze = async () => {
-    if (!urlInput.trim()) return;
+    // Validate input based on mode
+    if (inputMode === 'url' && !urlInput.trim()) return;
+    if (inputMode === 'file' && !uploadedFile) return;
+
     setStatus(GenerationStatus.ANALYZING);
-    
+
     try {
-      const data = await analyzeProductUrl(urlInput);
+      let data: ScrapedProduct;
+
+      // Use appropriate analysis method based on input mode
+      if (inputMode === 'file' && uploadedFile) {
+        console.log('📸 Analyzing uploaded product image with Gemini Vision...');
+        data = await analyzeProductImage(uploadedFile);
+      } else {
+        console.log('🔗 Analyzing product URL...');
+        data = await analyzeProductUrl(urlInput);
+      }
+
       setScrapedData(data);
       setAssets(data.images);
-      
+
       // Pre-fill config with AI analyzed data
       setConfig(prev => {
-          // Calculate a fake discount if price is available
+          // Calculate a discount if price is available
           const priceStr = data.price || "$59.99";
           const numPrice = parseFloat(priceStr.replace(/[^0-9.]/g, '')) || 59.99;
           const promoNum = (numPrice * 0.8).toFixed(2);
@@ -145,7 +169,7 @@ export const ImageAds: React.FC = () => {
 
   const selectedAssets = assets.filter(a => a.selected);
 
-  // --- RENDER STEP 0: URL INPUT ---
+  // --- RENDER STEP 0: FILE UPLOAD OR URL INPUT ---
   if (step === 0) {
     return (
       <div className="max-w-4xl mx-auto p-6 pt-20 text-center">
@@ -154,52 +178,151 @@ export const ImageAds: React.FC = () => {
                 <Sparkles className="w-3 h-3" /> AI Ad Generator
             </div>
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                Share your <span className="text-brand-purple">product link</span> to generate Image Ads
+                Upload product image or share <span className="text-brand-purple">product link</span>
             </h1>
             <p className="text-slate-400 mb-8">
-                Creatify supports: Amazon, Shopify, eBay, App Store, and more.
+                AI-powered product analysis using Google Gemini Vision
             </p>
-
-            <div className="flex justify-center gap-4 mb-10 grayscale opacity-70">
-                 {/* Mock Icons */}
-                <div className="w-8 h-8 bg-white rounded-full p-1"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" className="w-full h-full object-contain" alt="Amazon"/></div>
-                <div className="w-8 h-8 bg-white rounded-full p-1"><img src="https://upload.wikimedia.org/wikipedia/commons/0/0e/Shopify_logo_2018.svg" className="w-full h-full object-contain" alt="Shopify"/></div>
-                <div className="w-8 h-8 bg-white rounded-full p-1"><img src="https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg" className="w-full h-full object-contain" alt="eBay"/></div>
-            </div>
          </div>
 
-         <div className="max-w-2xl mx-auto space-y-4">
-            <div className="relative">
-                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                    <Globe className="h-5 w-5 text-slate-500" />
-                </div>
-                <input 
-                    type="text"
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                    placeholder="e.g. amazon.com/dp/B08..."
-                    className="w-full h-14 pl-12 pr-32 bg-surfaceHighlight/30 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-purple focus:border-transparent transition-all"
-                    onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
-                />
+         <div className="max-w-2xl mx-auto space-y-6">
+            {/* Mode Switcher */}
+            <div className="flex gap-2 p-1 bg-surface/50 rounded-lg border border-white/10 w-fit mx-auto">
+                <button
+                    onClick={() => setInputMode('file')}
+                    className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
+                        inputMode === 'file'
+                            ? 'bg-brand-purple text-white'
+                            : 'text-slate-400 hover:text-white'
+                    }`}
+                >
+                    <Upload className="w-4 h-4 inline mr-2" />
+                    Upload Image
+                </button>
+                <button
+                    onClick={() => setInputMode('url')}
+                    className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
+                        inputMode === 'url'
+                            ? 'bg-brand-purple text-white'
+                            : 'text-slate-400 hover:text-white'
+                    }`}
+                >
+                    <Globe className="w-4 h-4 inline mr-2" />
+                    Product URL
+                </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <Button variant="secondary" className="h-12 bg-surface border-white/10 text-white hover:bg-white/5">
-                    Choose existing product
-                </Button>
-                <Button 
-                    className="h-12" 
-                    onClick={handleAnalyze} 
-                    isLoading={status === GenerationStatus.ANALYZING}
-                    disabled={!urlInput}
-                >
-                    Analyze URL
-                </Button>
-            </div>
-            
-            <p className="text-sm text-slate-500 mt-6">
-                You can also <a href="#" className="text-brand-purple hover:underline">add product manually</a>
-            </p>
+            {/* File Upload Mode */}
+            {inputMode === 'file' && (
+                <div className="space-y-4">
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                    />
+
+                    <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="relative border-2 border-dashed border-white/20 rounded-xl p-12 bg-surfaceHighlight/20 hover:bg-surfaceHighlight/30 hover:border-brand-purple/50 transition-all cursor-pointer group"
+                    >
+                        {uploadedFile ? (
+                            <div className="space-y-3">
+                                <div className="w-16 h-16 bg-brand-purple/20 text-brand-purple rounded-full flex items-center justify-center mx-auto">
+                                    <CheckCircle2 className="w-8 h-8" />
+                                </div>
+                                <div>
+                                    <p className="text-white font-medium">{uploadedFile.name}</p>
+                                    <p className="text-sm text-slate-400 mt-1">
+                                        {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                                    </p>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setUploadedFile(null);
+                                    }}
+                                >
+                                    Remove
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto group-hover:bg-brand-purple/20 transition-colors">
+                                    <Upload className="w-8 h-8 text-slate-400 group-hover:text-brand-purple transition-colors" />
+                                </div>
+                                <div>
+                                    <p className="text-white font-medium mb-1">Click to upload product image</p>
+                                    <p className="text-sm text-slate-400">PNG, JPG, JPEG up to 10MB</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <Button
+                        className="w-full h-12"
+                        onClick={handleAnalyze}
+                        isLoading={status === GenerationStatus.ANALYZING}
+                        disabled={!uploadedFile}
+                    >
+                        {status === GenerationStatus.ANALYZING ? 'Analyzing with AI...' : 'Analyze Product Image'}
+                    </Button>
+                </div>
+            )}
+
+            {/* URL Input Mode */}
+            {inputMode === 'url' && (
+                <div className="space-y-4">
+                    <div className="relative">
+                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                            <Globe className="h-5 w-5 text-slate-500" />
+                        </div>
+                        <input
+                            type="text"
+                            value={urlInput}
+                            onChange={(e) => {
+                                setUrlInput(e.target.value);
+                                setInputMode('url');
+                            }}
+                            placeholder="e.g. amazon.com/dp/B08... or shopify.com/products/..."
+                            className="w-full h-14 pl-12 pr-4 bg-surfaceHighlight/30 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-brand-purple focus:border-transparent transition-all"
+                            onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
+                        />
+                    </div>
+
+                    <div className="flex justify-center gap-4 mb-4">
+                        <div className="w-8 h-8 bg-white rounded-full p-1 opacity-50">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" className="w-full h-full object-contain" alt="Amazon"/>
+                        </div>
+                        <div className="w-8 h-8 bg-white rounded-full p-1 opacity-50">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/0/0e/Shopify_logo_2018.svg" className="w-full h-full object-contain" alt="Shopify"/>
+                        </div>
+                        <div className="w-8 h-8 bg-white rounded-full p-1 opacity-50">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/1/1b/EBay_logo.svg" className="w-full h-full object-contain" alt="eBay"/>
+                        </div>
+                    </div>
+
+                    <Button
+                        className="w-full h-12"
+                        onClick={handleAnalyze}
+                        isLoading={status === GenerationStatus.ANALYZING}
+                        disabled={!urlInput.trim()}
+                    >
+                        {status === GenerationStatus.ANALYZING ? 'Analyzing URL...' : 'Analyze Product URL'}
+                    </Button>
+                </div>
+            )}
+
+            {status === GenerationStatus.ERROR && (
+                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                    <p className="text-red-400 text-sm">
+                        Analysis failed. Please try again or use a different {inputMode === 'file' ? 'image' : 'URL'}.
+                    </p>
+                </div>
+            )}
          </div>
       </div>
     );
