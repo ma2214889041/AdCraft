@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { Home } from './pages/Home';
@@ -11,14 +11,39 @@ import { Projects } from './pages/Projects';
 import { ABTesting } from './pages/ABTesting';
 import { AdMax } from './pages/AdMax';
 import { Editor } from './pages/Editor';
+import { AdminLogin } from './admin/AdminLogin';
+import { AdminLayout } from './admin/AdminLayout';
+import { useAdminStore } from './store/adminStore';
 
 const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [currentView, setCurrentView] = useState('landing'); // Default to Landing Page
+  const [currentView, setCurrentView] = useState('landing');
   const [initialInput, setInitialInput] = useState('');
+  const [isAdminMode, setIsAdminMode] = useState(false);
 
-  // When starting from the landing page, go to Dashboard (simulating login)
-  // or directly to create if an input was provided
+  const { isAuthenticated } = useAdminStore();
+
+  // Check if URL contains /admin
+  useEffect(() => {
+    const checkAdminRoute = () => {
+      const path = window.location.pathname;
+      const hash = window.location.hash;
+
+      // Check both pathname and hash for admin route
+      if (path.includes('/admin') || hash.includes('#/admin')) {
+        setIsAdminMode(true);
+      } else {
+        setIsAdminMode(false);
+      }
+    };
+
+    checkAdminRoute();
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', checkAdminRoute);
+    return () => window.removeEventListener('hashchange', checkAdminRoute);
+  }, []);
+
   const handleStartCreate = (input: string = '') => {
     setInitialInput(input);
     if (input) {
@@ -26,6 +51,10 @@ const App: React.FC = () => {
     } else {
         setCurrentView('dashboard');
     }
+  };
+
+  const handleAdminLoginSuccess = () => {
+    // Admin login successful, AdminLayout will be shown
   };
 
   const renderContent = () => {
@@ -54,7 +83,15 @@ const App: React.FC = () => {
     }
   };
 
-  // "App Mode" (Sidebar + Logged In Header) applies to everything except the Landing Page
+  // Admin Mode Rendering
+  if (isAdminMode) {
+    if (!isAuthenticated) {
+      return <AdminLogin onLoginSuccess={handleAdminLoginSuccess} />;
+    }
+    return <AdminLayout />;
+  }
+
+  // Regular User Mode
   const isAppMode = currentView !== 'landing' && currentView !== 'editor';
 
   return (
@@ -66,7 +103,6 @@ const App: React.FC = () => {
           <Header
               onMenuClick={() => setIsSidebarOpen(true)}
               isAppMode={isAppMode}
-              // If in app mode, clicking logo goes to dashboard. If in landing, it refreshes landing.
               onLogoClick={() => setCurrentView(isAppMode ? 'dashboard' : 'landing')}
           />
         </div>
