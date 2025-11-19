@@ -35,25 +35,72 @@ export const Home: React.FC<HomeProps> = ({ onStartCreate }) => {
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-white mb-8 drop-shadow-2xl animate-fade-in-up" style={{animationDelay: '0.1s'}}>
                 AI Ads that win.
             </h1>
-            
+
             <p className="text-xl md:text-2xl text-indigo-100 mb-3 font-medium max-w-2xl mx-auto animate-fade-in-up" style={{animationDelay: '0.2s'}}>
                 Winning video ads, made and tested for you.
             </p>
-            <p className="text-lg text-indigo-200/70 mb-12 animate-fade-in-up" style={{animationDelay: '0.3s'}}>
+            <p className="text-lg text-indigo-200/70 mb-6 animate-fade-in-up" style={{animationDelay: '0.3s'}}>
                 (yes, it's really that simple)
             </p>
 
-            <div className="flex flex-col items-center gap-6 mb-20 animate-fade-in-up" style={{animationDelay: '0.4s'}}>
-                <Button variant="creatify" onClick={() => onStartCreate()}>
-                    START FOR FREE
-                </Button>
-                
+            {/* Social Proof Stats */}
+            <div className="flex flex-wrap justify-center gap-8 mb-12 text-indigo-200/80 text-sm font-medium animate-fade-in-up" style={{animationDelay: '0.35s'}}>
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <span>Trusted by <strong className="text-white">1M+</strong> marketers</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                    <span><strong className="text-white">10,000+</strong> teams worldwide</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                    <span><strong className="text-white">$9M</strong> ARR achieved</span>
+                </div>
+            </div>
+
+            <div className="flex flex-col items-center gap-6 mb-12 animate-fade-in-up" style={{animationDelay: '0.4s'}}>
+                {/* URL Input Box */}
+                <div className="w-full max-w-2xl">
+                    <div className="flex flex-col sm:flex-row gap-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-2 shadow-2xl hover:bg-white/15 transition-colors">
+                        <div className="flex-1 flex items-center gap-3 px-4 py-1">
+                            <LinkIcon className="w-5 h-5 text-indigo-300/60 flex-shrink-0" />
+                            <input
+                                type="text"
+                                placeholder="Paste your product URL here..."
+                                value={urlInput}
+                                onChange={(e) => setUrlInput(e.target.value)}
+                                className="flex-1 bg-transparent text-white placeholder:text-indigo-300/40 outline-none text-base"
+                                onKeyPress={(e) => {
+                                    if (e.key === 'Enter' && urlInput.trim()) {
+                                        onStartCreate(urlInput);
+                                    }
+                                }}
+                            />
+                        </div>
+                        <Button
+                            variant="creatify"
+                            onClick={() => onStartCreate(urlInput)}
+                            className="sm:w-auto w-full"
+                        >
+                            CREATE AD
+                        </Button>
+                    </div>
+                    <p className="text-indigo-200/50 text-xs mt-3 text-center">Or start from scratch with our AI tools</p>
+                </div>
+
+                <div className="text-center">
+                    <Button variant="creatify" onClick={() => onStartCreate()} className="bg-white/5 hover:bg-white/10 border border-white/20">
+                        START FOR FREE
+                    </Button>
+                </div>
+
                 <div className="flex items-center gap-6 text-xs font-medium text-indigo-200/60 uppercase tracking-wider">
                     <span className="flex items-center gap-1.5">
                         <CheckCircle2 className="w-4 h-4 text-brand-purple" /> No credit card required
                     </span>
                     <span className="flex items-center gap-1.5">
-                        <div className="flex text-white"><Star className="w-3 h-3 fill-white" /><Star className="w-3 h-3 fill-white" /><Star className="w-3 h-3 fill-white" /><Star className="w-3 h-3 fill-white" /><Star className="w-3 h-3 fill-white/50" /></div> 
+                        <div className="flex text-white"><Star className="w-3 h-3 fill-white" /><Star className="w-3 h-3 fill-white" /><Star className="w-3 h-3 fill-white" /><Star className="w-3 h-3 fill-white" /><Star className="w-3 h-3 fill-white/50" /></div>
                         Rated 4.7/5 on G2
                     </span>
                 </div>
@@ -98,10 +145,22 @@ export const Home: React.FC<HomeProps> = ({ onStartCreate }) => {
                           <Sparkles className="w-3 h-3" /> Avatar Creation
                       </div>
                       <h3 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6 tracking-tight">AI Avatar</h3>
-                      <p className="text-slate-700 text-lg mb-8 leading-relaxed font-medium">
+                      <p className="text-slate-700 text-lg mb-6 leading-relaxed font-medium">
                           Create expressive AI avatars that speak, emote, and move naturally. Choose from our curated avatar library, design a custom avatar, or bring your own. Perfect for ads, content, and more.
                       </p>
-                      
+
+                      {/* Avatar Stats */}
+                      <div className="grid grid-cols-2 gap-4 mb-8">
+                          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-purple-100">
+                              <div className="text-4xl font-bold text-purple-700 mb-1">1,250+</div>
+                              <div className="text-sm text-slate-600 font-medium">Hyper-realistic AI Avatars</div>
+                          </div>
+                          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-purple-100">
+                              <div className="text-4xl font-bold text-purple-700 mb-1">140+</div>
+                              <div className="text-sm text-slate-600 font-medium">Voices & Accents</div>
+                          </div>
+                      </div>
+
                       <Button variant="creatify" onClick={() => onStartCreate()} className="shadow-xl shadow-purple-900/10">
                           CREATE YOUR AVATAR
                       </Button>
@@ -167,7 +226,54 @@ export const Home: React.FC<HomeProps> = ({ onStartCreate }) => {
                </div>
           </div>
 
-          {/* 3. ADMAX SECTION - Orange/Pink Sunset Gradient */}
+          {/* 3. LANGUAGE & VIDEO STYLES SECTION - Blue/Cyan Gradient */}
+          <div className="rounded-[2.5rem] bg-gradient-to-br from-[#0ea5e9] via-[#06b6d4] to-[#14b8a6] p-8 md:p-16 overflow-hidden relative shadow-2xl">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
+
+                  {/* Left Visual - Video Format Cards */}
+                  <div className="relative h-[400px] lg:h-[500px] flex items-center justify-center">
+                      <div className="grid grid-cols-2 gap-4 w-full max-w-md">
+                          {[
+                              { name: "Full Screen", icon: "🎬" },
+                              { name: "Green Screen", icon: "🎭" },
+                              { name: "Side-by-Side", icon: "📱" },
+                              { name: "Split View", icon: "⚡" }
+                          ].map((style, idx) => (
+                              <div key={idx} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-xl hover:scale-105 transition-transform duration-300 border border-white/50">
+                                  <div className="text-4xl mb-3">{style.icon}</div>
+                                  <div className="text-slate-900 font-bold text-lg">{style.name}</div>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+
+                  {/* Right Content */}
+                  <div>
+                      <div className="inline-flex items-center gap-2 text-cyan-100 font-bold tracking-wider text-xs uppercase mb-4 bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm border border-white/30">
+                          <MousePointerClick className="w-3 h-3" /> Global & Versatile
+                      </div>
+                      <h3 className="text-5xl md:text-6xl font-bold text-white mb-6 tracking-tight">Go Global</h3>
+                      <p className="text-white/90 text-lg mb-8 leading-relaxed font-medium">
+                          Create ads in 29 languages with 140+ realistic voices and accents. Choose from multiple video formats including full screen, green screen, side-by-side, and quick transitions. Perfect for any platform, any audience.
+                      </p>
+
+                      {/* Language Badges */}
+                      <div className="flex flex-wrap gap-2 mb-8">
+                          {['English', 'Spanish', 'French', 'German', 'Chinese', 'Japanese', 'Korean', 'Arabic', '+21 more'].map((lang) => (
+                              <span key={lang} className="bg-white/20 backdrop-blur-sm text-white text-xs font-medium px-3 py-1.5 rounded-full border border-white/30">
+                                  {lang}
+                              </span>
+                          ))}
+                      </div>
+
+                      <Button variant="creatify" onClick={() => onStartCreate()}>
+                          EXPLORE ALL LANGUAGES
+                      </Button>
+                  </div>
+              </div>
+          </div>
+
+          {/* 4. ADMAX SECTION - Orange/Pink Sunset Gradient */}
           <div className="rounded-[2.5rem] bg-gradient-to-r from-[#fdba74] via-[#fca5a5] to-[#e879f9] p-8 md:p-16 overflow-hidden relative shadow-2xl">
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-center relative z-10">
                    {/* Content */}
@@ -197,6 +303,80 @@ export const Home: React.FC<HomeProps> = ({ onStartCreate }) => {
               </div>
           </div>
 
+      </section>
+
+      {/* TRUSTED BY BRANDS SECTION */}
+      <section className="py-16 px-4 max-w-7xl mx-auto relative z-10">
+          <div className="text-center mb-12">
+              <p className="text-indigo-300/60 text-sm font-medium uppercase tracking-widest mb-8">Trusted by leading brands worldwide</p>
+
+              {/* Brand Logos */}
+              <div className="flex flex-wrap justify-center items-center gap-x-12 gap-y-8 opacity-60 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-500">
+                  {/* Placeholder brand names/logos - you can replace with actual logos */}
+                  {['Shopify', 'Amazon', 'Meta', 'TikTok', 'Google', 'Spotify', 'Netflix', 'Uber'].map((brand) => (
+                      <div key={brand} className="text-white font-bold text-xl md:text-2xl tracking-tight hover:text-brand-purple transition-colors cursor-pointer">
+                          {brand}
+                      </div>
+                  ))}
+              </div>
+          </div>
+      </section>
+
+      {/* TESTIMONIALS SECTION */}
+      <section className="py-20 px-4 max-w-7xl mx-auto relative z-10">
+          <h2 className="text-3xl md:text-5xl font-bold text-center text-white mb-4">What our customers say</h2>
+          <p className="text-center text-indigo-300/60 mb-16 max-w-2xl mx-auto">Join thousands of marketers and creators who are transforming their ad game with AI</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                  {
+                      quote: "AdCraft reduced our creative production time by 80%. We're now able to test 10x more ad variations and our ROAS improved by 40%.",
+                      author: "Sarah Johnson",
+                      role: "Performance Marketing Lead",
+                      company: "TechStartup Inc.",
+                      rating: 5
+                  },
+                  {
+                      quote: "The AI avatars are incredibly realistic. Our engagement rates doubled after we started using AdCraft for our video ads.",
+                      author: "Michael Chen",
+                      role: "CMO",
+                      company: "E-commerce Brand",
+                      rating: 5
+                  },
+                  {
+                      quote: "From URL to ad in minutes. This tool is a game-changer for agencies managing multiple clients.",
+                      author: "Emily Rodriguez",
+                      role: "Creative Director",
+                      company: "Digital Agency",
+                      rating: 5
+                  }
+              ].map((testimonial, idx) => (
+                  <div key={idx} className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-md border border-white/10 rounded-2xl p-8 hover:border-brand-purple/50 transition-all hover:-translate-y-2 duration-300">
+                      {/* Stars */}
+                      <div className="flex gap-1 mb-4">
+                          {[...Array(testimonial.rating)].map((_, i) => (
+                              <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                          ))}
+                      </div>
+
+                      {/* Quote */}
+                      <p className="text-slate-200 text-base leading-relaxed mb-6 italic">
+                          "{testimonial.quote}"
+                      </p>
+
+                      {/* Author */}
+                      <div className="flex items-center gap-3 pt-4 border-t border-white/10">
+                          <div className="w-10 h-10 bg-gradient-to-br from-brand-purple to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                              {testimonial.author.split(' ').map(n => n[0]).join('')}
+                          </div>
+                          <div>
+                              <div className="text-white font-semibold text-sm">{testimonial.author}</div>
+                              <div className="text-slate-400 text-xs">{testimonial.role} at {testimonial.company}</div>
+                          </div>
+                      </div>
+                  </div>
+              ))}
+          </div>
       </section>
 
       {/* SUPPORT TEAMS SECTION */}
@@ -352,13 +532,21 @@ export const Home: React.FC<HomeProps> = ({ onStartCreate }) => {
             {/* Card 1: Investors */}
             <div className="bg-white rounded-[2rem] p-10 shadow-xl flex flex-col justify-between min-h-[320px]">
                 <div>
-                    <p className="text-slate-700 text-lg font-medium mb-8 leading-relaxed">
-                        We've raised $23M from the best in the industry such as WndrCo, Kindred Ventures, and NFDG.
+                    <div className="inline-flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1.5 rounded-full text-xs font-bold mb-4">
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                        </span>
+                        SERIES A
+                    </div>
+                    <p className="text-slate-700 text-lg font-medium mb-2 leading-relaxed">
+                        We've raised <strong className="text-slate-900 text-2xl">$15.5M</strong> in Series A funding led by <strong className="text-slate-900">WndrCo</strong> and <strong className="text-slate-900">Kindred Ventures</strong>.
                     </p>
+                    <p className="text-slate-500 text-sm mb-6">Backed by the best investors in the industry</p>
                     <div className="flex items-center gap-3 opacity-80 grayscale hover:grayscale-0 transition-all">
-                        <div className="h-8 w-8 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full" title="WndrCo"></div>
-                        <div className="h-8 w-8 bg-black rounded-full flex items-center justify-center text-white text-[10px] font-bold" title="Kindred">K</div>
-                        <div className="h-8 w-16 bg-black rounded-full flex items-center justify-center text-white text-[10px] font-bold" title="NFDG">NFDG</div>
+                        <div className="h-10 w-10 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full shadow-md" title="WndrCo"></div>
+                        <div className="h-10 w-10 bg-black rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md" title="Kindred">K</div>
+                        <div className="h-10 w-20 bg-slate-900 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md" title="NFDG">NFDG</div>
                     </div>
                 </div>
                 <a href="#" className="text-brand-purple font-bold text-xs flex items-center gap-2 uppercase tracking-widest mt-8 group">
