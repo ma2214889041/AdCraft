@@ -1,5 +1,16 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { ScrapedProduct, ProductAsset } from "../types";
+import { optimizeImage, fileToBase64Optimized } from "./imageOptimizationService";
+import { VideoProgressTracker, ProgressCallback } from "./videoProgressService";
+import {
+  generateFileHash,
+  getCachedImageAnalysis,
+  cacheImageAnalysis,
+  getCachedVideo,
+  cacheVideo,
+  getCachedGenerationResult,
+  cacheGenerationResult,
+} from "./cacheService";
 
 // Get API key from environment variables
 const getApiKey = (): string => {
@@ -38,15 +49,46 @@ async function toBase64(input: File | Blob | string): Promise<string> {
 }
 
 /**
- * Analyze product image using Gemini Vision
+ * Analyze product image using Gemini Vision (with optimization and caching)
  * This is the MOST IMPORTANT function for extracting product information from images
  */
-export const analyzeProductImage = async (imageFile: File | string): Promise<ScrapedProduct> => {
+export const analyzeProductImage = async (
+  imageFile: File | string,
+  options: { forceRefresh?: boolean } = {}
+): Promise<ScrapedProduct> => {
   const ai = getClient();
 
   console.log("📸 Analyzing product image...");
 
-  const base64Image = await toBase64(imageFile);
+  // Generate hash for caching (only for File objects)
+  let imageHash: string | null = null;
+  if (imageFile instanceof File) {
+    imageHash = await generateFileHash(imageFile);
+
+    // Check cache first
+    if (!options.forceRefresh) {
+      const cached = await getCachedImageAnalysis(imageHash);
+      if (cached) {
+        console.log("✅ Using cached analysis result");
+        return cached;
+      }
+    }
+  }
+
+  // Optimize image if it's a File
+  let base64Image: string;
+  if (imageFile instanceof File) {
+    console.log("🔧 Optimizing image...");
+    base64Image = await fileToBase64Optimized(imageFile, {
+      maxWidth: 2048,
+      maxHeight: 2048,
+      quality: 0.85,
+      maxSizeKB: 1024, // 1MB max for API
+    });
+    console.log("✅ Image optimized");
+  } else {
+    base64Image = await toBase64(imageFile);
+  }
 
   const prompt = `
     You are an expert product analyst. Analyze this product image in detail.
@@ -122,7 +164,7 @@ export const analyzeProductImage = async (imageFile: File | string): Promise<Scr
       ? `$${data.price_min} - $${data.price_max}`
       : "$0.00";
 
-    return {
+    const result: ScrapedProduct = {
       url: 'uploaded-image',
       title: data.product_name || data.brand || "Product",
       description: data.description || "No description available",
@@ -131,6 +173,13 @@ export const analyzeProductImage = async (imageFile: File | string): Promise<Scr
       price: priceRange,
       currency: "$"
     };
+
+    // Cache the result
+    if (imageHash) {
+      await cacheImageAnalysis(imageHash, result);
+    }
+
+    return result;
 
   } catch (error) {
     console.error("❌ Image analysis error:", error);
@@ -248,13 +297,34 @@ export const generateSellingPoints = async (productName: string, description: st
 };
 
 /**
- * Generate video ad from product image using Veo
+ * Generate video ad from product image using Veo (with progress tracking and caching)
  */
-export const generateVideoAd = async (imageUrl: string, productDescription: string): Promise<string> => {
+export const generateVideoAd = async (
+  imageUrl: string,
+  productDescription: string,
+  onProgress?: ProgressCallback,
+  options: { forceRefresh?: boolean } = {}
+): Promise<string> => {
   const ai = getClient();
   const apiKey = getApiKey();
 
+  // Create cache key from inputs
+  const cacheKey = `${imageUrl}_${productDescription}`;
+
+  // Check cache first
+  if (!options.forceRefresh) {
+    const cached = await getCachedVideo(cacheKey);
+    if (cached) {
+      console.log("✅ Using cached video");
+      return cached;
+    }
+  }
+
   console.log("🎬 Generating product video ad...");
+
+  // Initialize progress tracker
+  const tracker = onProgress ? new VideoProgressTracker(onProgress) : null;
+  tracker?.setStage('analyzing', 0);
 
   // Convert image to base64
   const base64Image = await toBase64(imageUrl);
@@ -262,6 +332,8 @@ export const generateVideoAd = async (imageUrl: string, productDescription: stri
   const shortDesc = productDescription.slice(0, 150);
 
   try {
+    tracker?.setStage('preparing', 100);
+
     let operation = await ai.models.generateVideos({
       model: import.meta.env.VITE_VEO_MODEL || 'veo-3.1-fast-generate-preview',
       prompt: `Professional product commercial. ${shortDesc}. Cinematic lighting, slow rotation, 4K quality, studio background, elegant presentation.`,
@@ -278,32 +350,65 @@ export const generateVideoAd = async (imageUrl: string, productDescription: stri
 
     console.log("⏳ Video rendering in progress...");
 
+    // Start simulated progress polling
+    tracker?.startPolling(2000);
+
     while (!operation.done) {
       await new Promise(resolve => setTimeout(resolve, 5000));
       operation = await ai.operations.getVideosOperation({ operation: operation });
     }
 
+    // Stop polling and move to processing
+    tracker?.stopPolling();
+    tracker?.setStage('processing', 50);
+
     const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
 
     if (!videoUri) {
+      tracker?.fail("Video generation failed");
       throw new Error("Video generation failed");
     }
 
+    const videoUrl = `${videoUri}&key=${apiKey}`;
+
+    // Cache the result
+    await cacheVideo(cacheKey, videoUrl);
+
+    tracker?.complete();
     console.log("✅ Video generated successfully!");
 
-    return `${videoUri}&key=${apiKey}`;
+    return videoUrl;
 
   } catch (error) {
+    tracker?.fail();
     console.error("❌ Video generation error:", error);
     throw error;
+  } finally {
+    tracker?.destroy();
   }
 };
 
 /**
- * Generate AI scene with product (image editing)
+ * Generate AI scene with product (image editing with caching)
  */
-export const generateAIProductScene = async (imageUrl: string, sceneDescription: string): Promise<string> => {
+export const generateAIProductScene = async (
+  imageUrl: string,
+  sceneDescription: string,
+  options: { forceRefresh?: boolean } = {}
+): Promise<string> => {
   const ai = getClient();
+
+  // Create cache key
+  const cacheKey = `scene_${imageUrl}_${sceneDescription}`;
+
+  // Check cache first
+  if (!options.forceRefresh) {
+    const cached = await getCachedGenerationResult<string>(cacheKey);
+    if (cached) {
+      console.log("✅ Using cached AI scene");
+      return cached;
+    }
+  }
 
   console.log("🎨 Generating AI product scene...");
 
@@ -332,8 +437,13 @@ export const generateAIProductScene = async (imageUrl: string, sceneDescription:
 
     const part = response.candidates?.[0]?.content?.parts?.[0];
     if (part && part.inlineData) {
+      const result = `data:image/png;base64,${part.inlineData.data}`;
+
+      // Cache the result
+      await cacheGenerationResult(cacheKey, result);
+
       console.log("✅ AI scene generated!");
-      return `data:image/png;base64,${part.inlineData.data}`;
+      return result;
     }
 
     throw new Error("No image generated");

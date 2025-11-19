@@ -3,6 +3,7 @@ import { Button } from '../components/Button';
 import { analyzeProductImage, analyzeProductUrl, generateSellingPoints, generateVideoAd, generateAIProductScene } from '../services/adService';
 import { ScrapedProduct, ProductAsset, AdConfig, GenerationStatus } from '../types';
 import { Search, Globe, ArrowRight, ArrowLeft, CheckCircle2, Plus, Image as ImageIcon, Wand2, Sparkles, LayoutTemplate, Download, Video, Play, Loader2, Star, Upload } from 'lucide-react';
+import { VideoProgress, formatTimeRemaining, getProgressColor } from '../services/videoProgressService';
 
 export const ImageAds: React.FC = () => {
   const [step, setStep] = useState<number>(0); // 0: Input (URL or File), 1: Config
@@ -23,6 +24,7 @@ export const ImageAds: React.FC = () => {
   const [previewMode, setPreviewMode] = useState<'images' | 'video'>('images');
   const [videoStatus, setVideoStatus] = useState<GenerationStatus>(GenerationStatus.IDLE);
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
+  const [videoProgress, setVideoProgress] = useState<VideoProgress | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Config State
@@ -128,13 +130,23 @@ export const ImageAds: React.FC = () => {
     if (!selectedImage) return;
 
     setVideoStatus(GenerationStatus.GENERATING_VIDEO);
+    setVideoProgress(null);
+
     try {
-        const videoUri = await generateVideoAd(selectedImage.url, config.productDescription);
+        const videoUri = await generateVideoAd(
+          selectedImage.url,
+          config.productDescription,
+          (progress) => {
+            // Update progress in real-time
+            setVideoProgress(progress);
+          }
+        );
         setGeneratedVideoUrl(videoUri);
         setVideoStatus(GenerationStatus.COMPLETED);
     } catch (e) {
         console.error(e);
         setVideoStatus(GenerationStatus.ERROR);
+        setVideoProgress(null);
     }
   };
 
@@ -601,16 +613,41 @@ export const ImageAds: React.FC = () => {
                                     <p className="text-slate-400 text-sm mb-6">
                                         Use Google Veo to animate your selected product image into a cinematic commercial.
                                     </p>
-                                    <Button 
+
+                                    {/* Progress Display */}
+                                    {videoProgress && videoStatus === GenerationStatus.GENERATING_VIDEO && (
+                                      <div className="mb-6 space-y-3">
+                                        <div className="flex items-center justify-between text-sm">
+                                          <span className="text-white font-medium">{videoProgress.message}</span>
+                                          <span className="text-brand-purple font-bold">{videoProgress.progress}%</span>
+                                        </div>
+
+                                        <div className="h-2 bg-black/30 rounded-full overflow-hidden">
+                                          <div
+                                            className={`h-full bg-gradient-to-r ${getProgressColor(videoProgress.stage)} transition-all duration-500`}
+                                            style={{ width: `${videoProgress.progress}%` }}
+                                          />
+                                        </div>
+
+                                        {videoProgress.estimatedTimeRemaining !== undefined && videoProgress.estimatedTimeRemaining > 0 && (
+                                          <p className="text-xs text-slate-400">
+                                            剩余时间：{formatTimeRemaining(videoProgress.estimatedTimeRemaining)}
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    <Button
                                         onClick={handleGenerateVideo}
                                         isLoading={videoStatus === GenerationStatus.GENERATING_VIDEO}
+                                        disabled={videoStatus === GenerationStatus.GENERATING_VIDEO}
                                         className="w-full"
                                     >
-                                        {videoStatus === GenerationStatus.GENERATING_VIDEO ? 'Generating...' : 'Generate Video Ad'}
+                                        {videoStatus === GenerationStatus.GENERATING_VIDEO ? '生成中...' : '生成视频广告'}
                                     </Button>
-                                    
+
                                     {videoStatus === GenerationStatus.ERROR && (
-                                        <p className="text-red-400 text-xs mt-3">Generation failed. Please try again.</p>
+                                        <p className="text-red-400 text-xs mt-3">生成失败，请重试</p>
                                     )}
                                 </div>
                             ) : (
