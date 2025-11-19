@@ -9,23 +9,22 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const [stats, setStats] = useState<PerformanceStats | null>(null);
-  const [loading, setLoading] = useState(false); // Changed to false to skip loading
+  const [loading, setLoading] = useState(true);
 
-  // Temporarily disabled performance stats loading
-  // useEffect(() => {
-  //   const loadStats = async () => {
-  //     try {
-  //       const data = await getPerformanceStats(24); // Last 24 hours
-  //       setStats(data);
-  //     } catch (error) {
-  //       console.error('Failed to load performance stats:', error);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const data = await getPerformanceStats(24); // Last 24 hours
+        setStats(data);
+      } catch (error) {
+        console.error('Failed to load performance stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  //   loadStats();
-  // }, []);
+    loadStats();
+  }, []);
 
   const tools = [
     {
